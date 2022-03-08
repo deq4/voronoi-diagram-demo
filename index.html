@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="algorithm.js"></script>
+    <title>Fortune algorithm demo</title>
+</head>
+<body>
+    <canvas width="1000" height="1000"></canvas>
+    <input type="number" id="x_off" step="50" value="10">
+    <input type="number" id="y_off" step="50" value="10">
+    <input type="number" id="scale" step="0.2" value="1" min="0.2">
+
+    <style>
+        canvas {
+            width: 95vmin;
+            height: 95vmin;
+            align-self: center;
+            border: 1px solid;
+        }
+    </style>
+    <script>
+        function getRayBorderIntersection(startPoint, rayPoint, border) {
+            const [dx, dy] = [rayPoint.x - startPoint.x, rayPoint.y - startPoint.y];
+            let x, y;
+            if (dx !== 0) {
+                x = dx > 0 ? border.right : border.left;
+                y = startPoint.y + (x - startPoint.x ) * dy / dx;
+            } else {
+                y = dy > 0 ? border.bottom : border.top;
+                x = startPoint.x;
+            }
+            return {x, y};
+        }
+
+        function drawAxes() {
+            ctx.arc(0, 0, 2 / scale, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(-x_off.value / scale, 0);
+            ctx.lineTo((-x_off.value + width) / scale, 0);
+            ctx.moveTo(0, -y_off.value / scale);
+            ctx.lineTo(0, (-y_off.value + height) / scale);
+            ctx.stroke();
+        }
+
+        function drawCircle(x, y, style) {
+            ctx.save();
+            ctx.fillStyle = style;
+            ctx.beginPath();
+            ctx.arc(x, y, 5 / scale, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        const ALGO_SCALE = 50;
+
+        const canvas = document.querySelector("canvas");
+        const ctx = canvas.getContext("2d");
+
+        const [width, height] = [canvas.width, canvas.height];
+        // ctx.scale(1, -1); ctx.translate(0, -height);
+        ctx.font = '25px sans-serif';
+        const baseTransform = ctx.getTransform();
+
+        let scale;
+
+        canvas.addEventListener("mousemove", (ev) => {
+            if (!ev.buttons) {
+                return;
+            }
+            x_off.value = parseFloat(x_off.value) + ev.movementX / canvas.clientWidth * width;
+            y_off.value = parseFloat(y_off.value) +/*-*/ ev.movementY / canvas.clientHeight * height;
+        });
+
+        const drawLoop = () => {
+            ctx.setTransform(baseTransform);
+            ctx.clearRect(0, 0, width, height);
+            ctx.beginPath();
+
+            scale = parseFloat(window.scale.value);
+            ctx.translate(x_off.value, y_off.value);
+            ctx.scale(scale, scale);
+            ctx.lineWidth = 1.5 / scale;
+            
+            drawAxes();
+
+            for (site of sites) {
+                drawCircle(site.x * ALGO_SCALE, site.y * ALGO_SCALE, "black");
+            }
+
+            for (vertex of diagram.vertices) {
+                drawCircle(vertex.x * ALGO_SCALE, vertex.y * ALGO_SCALE, "blue");
+            }
+
+            ctx.save();
+            ctx.strokeStyle = "green";
+            const border = {left: -x_off.value / scale, right: (-x_off.value + width) / scale,
+                            top: -y_off.value / scale, bottom: (-y_off.value + height) / scale};
+            for (edge of diagram.edges) {
+                let startPoint, rayVertex;
+                let startCoords, endCoords;
+                if (edge.leftVertex) {
+                    const startPoint = edge.leftVertex.endCoords ? edge.leftVertex.endCoords : edge.rightVertex.endCoords;
+                    if (!startPoint) {
+                        rayVertex = edge.leftVertex;
+                        const rayX = getXFromVertex(rayVertex, rayVertex.startY + 1);
+                        const rayY = ( (rayVertex.startY + 1)**2 - rayVertex.lParabolaSite.y**2 - (rayX - rayVertex.lParabolaSite.x)**2 )
+                            / (2 * ((rayVertex.startY + 1) - rayVertex.lParabolaSite.y));  //y = ( (y_s^2 - y1^2) - (x - x1)^2 ) / ( 2(y_s - y1) )
+                        const rayCoords = {x: rayX * ALGO_SCALE, y: rayY * ALGO_SCALE};
+                        const rayX1 = getXFromVertex(rayVertex, rayVertex.startY + 2);
+                        const rayY1 = ( (rayVertex.startY + 2)**2 - rayVertex.lParabolaSite.y**2 - (rayX - rayVertex.lParabolaSite.x)**2 )
+                            / (2 * ((rayVertex.startY + 2) - rayVertex.lParabolaSite.y));
+                        const rayCoords1 = {x: rayX1 * ALGO_SCALE, y: rayY1 * ALGO_SCALE};
+                        startCoords = getRayBorderIntersection(rayCoords1, rayCoords, border);
+                        endCoords = getRayBorderIntersection(rayCoords, rayCoords1, border);
+                    } else {
+                        startCoords = {x: startPoint.x * ALGO_SCALE, y: startPoint.y * ALGO_SCALE};
+                        rayVertex = startPoint === edge.leftVertex.endCoords ? edge.rightVertex : edge.leftVertex;
+                    }
+                } else {
+                    startCoords = {x: edge.startCoords.x * ALGO_SCALE, y: edge.startCoords.y * ALGO_SCALE};
+                    rayVertex = edge.vertex;
+                }
+
+                if (!rayVertex.endCoords) {
+                    const rayX = getXFromVertex(rayVertex, rayVertex.startY + 1);
+                    const rayY = ( (rayVertex.startY + 1)**2 - rayVertex.lParabolaSite.y**2 - (rayX - rayVertex.lParabolaSite.x)**2 )
+                        / (2 * ((rayVertex.startY + 1) - rayVertex.lParabolaSite.y));  //y = ( (y_s^2 - y1^2) - (x - x1)^2 ) / ( 2(y_s - y1) )
+                    const rayCoords = {x: rayX * ALGO_SCALE, y: rayY * ALGO_SCALE};
+                    endCoords = getRayBorderIntersection(startCoords, rayCoords, border);
+                } else {
+                    endCoords = {x: rayVertex.endCoords.x * ALGO_SCALE, y: rayVertex.endCoords.y * ALGO_SCALE};
+                }
+
+                ctx.beginPath();
+                ctx.moveTo(startCoords.x, startCoords.y);
+                ctx.lineTo(endCoords.x, endCoords.y);
+                ctx.stroke();
+            }
+            ctx.restore();
+           
+            requestAnimationFrame(drawLoop);
+        };
+
+        //const sites = [{"x":5,"y":1.2}, {"x":9,"y":1}, {"x":3,"y":2}, {"x":7,"y":3}, {"x":4,"y":5}];
+        const sites = [{x: 5, y: 1}, {x: 10, y: 4}];
+        const state = init(sites);
+        while (state.queue.length > 0) {
+            step(state);
+        }
+        const diagram = state.diagram;
+
+        drawLoop();
+    </script>
+</body>
+</html>
