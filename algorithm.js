@@ -4,13 +4,19 @@ const CIRCLE = 1;
 const EPS_TOLERANCE = 1e-9;
 
 class Vertex {
-    constructor(startY, lParabolaSite, rParabolaSite) {
-        this.startY = startY;
+    constructor(lParabolaSite, rParabolaSite, rayStart = null) {
         this.lParabolaSite = lParabolaSite;
         this.rParabolaSite = rParabolaSite;
+        if (!rayStart) {
+            const [lowerParabola, higherParabola] = lParabolaSite.y > rParabolaSite.y ?
+                [lParabolaSite, rParabolaSite] : [rParabolaSite, lParabolaSite];
+            rayStart = {x: lowerParabola.x, y: calcParabolaY(higherParabola, lowerParabola.y, lowerParabola.x)};
+        }
+        this.rayStart = rayStart;
     }
 
-    startY;
+    rayStart;
+    segmentEnd = null;
     lParabolaSite;
     rParabolaSite;
 }
@@ -30,10 +36,9 @@ function init(sites) {
         .sort((lhs, rhs) => lhs[0] - rhs[0]);
     const s1 = queue[0][2];
     const s2 = queue[1][2];
-    const y  = Math.max(s1.y, s2.y);
     queue.splice(0, 2);
-    const beachLine = [new Vertex(y, s1, s2), new Vertex(y, s2, s1)];
-    const diagram = {edges: [{leftVertex: beachLine[0], rightVertex: beachLine[1]}], vertices: []}
+    const beachLine = [new Vertex(s1, s2), new Vertex(s2, s1)];
+    const diagram = {edges: [[beachLine[0], beachLine[1]]], vertices: []}
     const state = {queue, beachLine, diagram};
     return state;
 }
@@ -89,6 +94,13 @@ function init(sites) {
 */
 
 
+function getRayDirection(vertex) {
+    return {x: -(vertex.rParabolaSite.y - vertex.lParabolaSite.y), y: vertex.rParabolaSite.x - vertex.lParabolaSite.x};
+}
+
+function calcParabolaY(parabolaSite, y_s, x) {
+    return ((y_s**2 - parabolaSite.y**2) - (x - parabolaSite.x)**2) / (2 * (y_s - parabolaSite.y));
+}
 
 let scanLineY = 0;
 
@@ -163,8 +175,8 @@ function step(state) {
             
             const disectedParabolaSite = idx === beachLine.length ? idx === 0 ? null :
                 beachLine[idx - 1].rParabolaSite : beachLine[idx].lParabolaSite;
-            const leftVertex = new Vertex(y, disectedParabolaSite, eventData);
-            const rightVertex = new Vertex(y, eventData, disectedParabolaSite);
+            const leftVertex = new Vertex(disectedParabolaSite, eventData);
+            const rightVertex = new Vertex(eventData, disectedParabolaSite);
             beachLine.splice(idx, 0, leftVertex, rightVertex);
             
             if (idx > 0 && idx + 2 < beachLine.length) {
@@ -185,7 +197,7 @@ function step(state) {
                 insertCircleEvent(rightVertex, beachLine[idx + 2]);
             }
             
-            diagram.edges.push({leftVertex, rightVertex});
+            diagram.edges.push([leftVertex, rightVertex]);
             
             break;
         }
@@ -196,7 +208,7 @@ function step(state) {
             const [lVertex, rVertex] = [beachLine[idx], beachLine[idx + 1]];
             beachLine.splice(idx, 2);
             const circleEventCoords = getCircleEventVertexCoords(lVertex.lParabolaSite, lVertex.rParabolaSite, rVertex.rParabolaSite);
-            const newVertex = new Vertex(y, lVertex.lParabolaSite, rVertex.rParabolaSite);
+            const newVertex = new Vertex(lVertex.lParabolaSite, rVertex.rParabolaSite, circleEventCoords);
             beachLine.splice(idx, 0, newVertex);
 
             if (idx > 0) {
@@ -223,9 +235,9 @@ function step(state) {
             }
 
             diagram.vertices.push(circleEventCoords);
-            lVertex.endCoords = circleEventCoords;
-            rVertex.endCoords = circleEventCoords;
-            diagram.edges.push({vertex: newVertex, startCoords: circleEventCoords});
+            lVertex.segmentEnd = circleEventCoords;
+            rVertex.segmentEnd = circleEventCoords;
+            diagram.edges.push([newVertex]);
         }
     }
 }

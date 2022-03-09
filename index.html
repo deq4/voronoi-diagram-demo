@@ -21,14 +21,17 @@
         }
     </style>
     <script>
-        function getRayBorderIntersection(startPoint, rayPoint, border) {
-            const [dx, dy] = [rayPoint.x - startPoint.x, rayPoint.y - startPoint.y];
+        function convertCoords(coords) {
+            return {x: coords.x * ALGO_SCALE, y: coords.y * ALGO_SCALE};
+        }
+
+        function getRayBorderIntersection(startPoint, rayDirection, border) {
             let x, y;
-            if (dx !== 0) {
-                x = dx > 0 ? border.right : border.left;
-                y = startPoint.y + (x - startPoint.x ) * dy / dx;
+            if (rayDirection.x !== 0) {
+                x = rayDirection.x > 0 ? border.right : border.left;
+                y = startPoint.y + (x - startPoint.x ) * rayDirection.y / rayDirection.x;
             } else {
-                y = dy > 0 ? border.bottom : border.top;
+                y = rayDirection.y > 0 ? border.bottom : border.top;
                 x = startPoint.x;
             }
             return {x, y};
@@ -87,57 +90,35 @@
             drawAxes();
 
             for (site of sites) {
-                drawCircle(site.x * ALGO_SCALE, site.y * ALGO_SCALE, "black");
+                const coords = convertCoords(site);
+                drawCircle(coords.x, coords.y, "black");
             }
 
             for (vertex of diagram.vertices) {
-                drawCircle(vertex.x * ALGO_SCALE, vertex.y * ALGO_SCALE, "blue");
+                const coords = convertCoords(vertex);
+                drawCircle(coords.x, coords.y, "blue");
             }
 
             ctx.save();
             ctx.strokeStyle = "green";
             const border = {left: -x_off.value / scale, right: (-x_off.value + width) / scale,
                             top: -y_off.value / scale, bottom: (-y_off.value + height) / scale};
-            for (edge of diagram.edges) {
-                let startPoint, rayVertex;
-                let startCoords, endCoords;
-                if (edge.leftVertex) {
-                    const startPoint = edge.leftVertex.endCoords ? edge.leftVertex.endCoords : edge.rightVertex.endCoords;
-                    if (!startPoint) {
-                        rayVertex = edge.leftVertex;
-                        const rayX = getXFromVertex(rayVertex, rayVertex.startY + 1);
-                        const rayY = ( (rayVertex.startY + 1)**2 - rayVertex.lParabolaSite.y**2 - (rayX - rayVertex.lParabolaSite.x)**2 )
-                            / (2 * ((rayVertex.startY + 1) - rayVertex.lParabolaSite.y));  //y = ( (y_s^2 - y1^2) - (x - x1)^2 ) / ( 2(y_s - y1) )
-                        const rayCoords = {x: rayX * ALGO_SCALE, y: rayY * ALGO_SCALE};
-                        const rayX1 = getXFromVertex(rayVertex, rayVertex.startY + 2);
-                        const rayY1 = ( (rayVertex.startY + 2)**2 - rayVertex.lParabolaSite.y**2 - (rayX - rayVertex.lParabolaSite.x)**2 )
-                            / (2 * ((rayVertex.startY + 2) - rayVertex.lParabolaSite.y));
-                        const rayCoords1 = {x: rayX1 * ALGO_SCALE, y: rayY1 * ALGO_SCALE};
-                        startCoords = getRayBorderIntersection(rayCoords1, rayCoords, border);
-                        endCoords = getRayBorderIntersection(rayCoords, rayCoords1, border);
+            for (const edge of diagram.edges) {
+                for (const ray of edge) {
+                    const startCoords = convertCoords(ray.rayStart);
+                    let endCoords;
+                    if (ray.segmentEnd) {
+                        endCoords = convertCoords(ray.segmentEnd);
                     } else {
-                        startCoords = {x: startPoint.x * ALGO_SCALE, y: startPoint.y * ALGO_SCALE};
-                        rayVertex = startPoint === edge.leftVertex.endCoords ? edge.rightVertex : edge.leftVertex;
+                        const rayDirection = getRayDirection(ray);
+                        endCoords = getRayBorderIntersection(startCoords, rayDirection, border);
                     }
-                } else {
-                    startCoords = {x: edge.startCoords.x * ALGO_SCALE, y: edge.startCoords.y * ALGO_SCALE};
-                    rayVertex = edge.vertex;
-                }
 
-                if (!rayVertex.endCoords) {
-                    const rayX = getXFromVertex(rayVertex, rayVertex.startY + 1);
-                    const rayY = ( (rayVertex.startY + 1)**2 - rayVertex.lParabolaSite.y**2 - (rayX - rayVertex.lParabolaSite.x)**2 )
-                        / (2 * ((rayVertex.startY + 1) - rayVertex.lParabolaSite.y));  //y = ( (y_s^2 - y1^2) - (x - x1)^2 ) / ( 2(y_s - y1) )
-                    const rayCoords = {x: rayX * ALGO_SCALE, y: rayY * ALGO_SCALE};
-                    endCoords = getRayBorderIntersection(startCoords, rayCoords, border);
-                } else {
-                    endCoords = {x: rayVertex.endCoords.x * ALGO_SCALE, y: rayVertex.endCoords.y * ALGO_SCALE};
+                    ctx.beginPath();
+                    ctx.moveTo(startCoords.x, startCoords.y);
+                    ctx.lineTo(endCoords.x, endCoords.y);
+                    ctx.stroke();
                 }
-
-                ctx.beginPath();
-                ctx.moveTo(startCoords.x, startCoords.y);
-                ctx.lineTo(endCoords.x, endCoords.y);
-                ctx.stroke();
             }
             ctx.restore();
            
