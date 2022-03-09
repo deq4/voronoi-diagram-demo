@@ -21,15 +21,6 @@ class Vertex {
     rParabolaSite;
 }
 
-// class SearchTree {
-//     constructor(compare)  {this.compare = compare;}
-//     // compare(lhs, rhs);
-//     find(key);
-//     add(val);
-//     remove(val);
-//     lowerBound(key)
-// }
-
 function init(sites) {
     const queue = sites
     .map((coord) => [coord.y, SITE, coord])
@@ -42,57 +33,6 @@ function init(sites) {
     const state = {queue, beachLine, diagram};
     return state;
 }
-
-/*
-    (x1 - x)^2 + (y1 - y)^2 = (y_s - y)^2 -> (x1 - x)^2 = (y_s - y - y1 + y) * (y_s - y + y1 - y) -> (x1 - x)^2 = (y_s - y1)(y_s + y1 - 2y)
-    (x2 - x)^2 + (y2 - y)^2 = (y_s - y)^2 -> (x2 - x)^2 = (y_s - y2)(y_s + y2 - 2y)
-
-    (x1 - x - x2 + x)(x1 - x + x2 - x) = (y_s - y1)(y_s + y1 - 2y) - (y_s - y2)(y_s + y2 - 2y)
-    (x1 - x2)(x1 + x2 - 2x) = (y_s - y1)(y_s + y1) - (y_s - y2)(y_s + y2) - 2y * (y2 - y1)
-    (x1^2 - x2^2) - 2(x1 - x2)*x = y2^2 - y1^2 - 2(y2 - y1)*y
-    2(y2 - y1)*y + 2(x2 - x1)*x + (x1^2 - x2^2) + (y1^2 - y2^2) = 0
-
-    2y = ((x2^2 - x1^2) + (y2^2 - y1^2) - 2(x2 - x1)*x) / (y2 - y1)
-
-    (x1 - x)^2 = (y_s - y1)(y_s + y1 - 2y)
-    (x1 - x)^2 = (y_s - y1)(y_s + y1 - ((x2^2 - x1^2) + (y2^2 - y1^2) - 2(x2 - x1)*x) / (y2 - y1))
-    (x1 - x)^2 * (y2 - y1) = (y_s - y1)((y_s + y1)(y2 - y1) - (x2^2 - x1^2) - (y2^2 - y1^2) + 2(x2 - x1)*x)
-    (y2 - y1)x^2 - 2x1*(y2 - y1) * x + x1^2*(y2 - y1) = (y_s - y1)(y_s + y1)(y2 - y1) - (y_s - y1)((x2^2 - x1^2) + (y2^2 - y1^2)) + 2(y_s - y1)(x2 - x1)*x
-    (y2 - y1)x^2 + 2((y_s - y1)(x2 - x1) - x1*(y2 - y1)) * x + x1^2*(y2 - y1) = (y_s - y1)(y_s + y1)(y2 - y1) - (y_s - y1)((x2^2 - x1^2) + (y2^2 - y1^2))
-    ...
-
-    (x1 - x)^2 = (y_s - y1)(y_s + y1 - 2y)
-    (x - x1)^2 = (y_s^2 - y1^2) - 2(y_s - y1) * y
-    y = ( (y_s^2 - y1^2) - (x - x1)^2 ) / ( 2(y_s - y1) )
-
-    y = ( (y_s^2 - y2^2) - (x - x2)^2 ) / ( 2(y_s - y2) )
-
-    ( (y_s^2 - y1^2) - (x - x1)^2 ) / ( 2(y_s - y1) ) = ( (y_s^2 - y2^2) - (x - x2)^2 ) / ( 2(y_s - y2) )
-    ( (y_s^2 - y1^2) - (x - x1)^2 )( 2(y_s - y2) ) = ( (y_s^2 - y2^2) - (x - x2)^2 )( 2(y_s - y1) )
-    (y_s^2 - y1^2)(2(y_s - y2)) - ( 2(y_s - y2) )(x - x1)^2 = (y_s^2 - y2^2)(2(y_s - y1)) - ( 2(y_s - y1) )(x - x2)^2
-    ( 2(y_s - y1) )(x - x2)^2 - ( 2(y_s - y2) )(x - x1)^2 + (y_s^2 - y1^2)(2(y_s - y2)) - (y_s^2 - y2^2)(2(y_s - y1)) = 0
-    (y_s - y1)(x - x2)^2 - (y_s - y2)(x - x1)^2 + (y_s^2 - y1^2)(y_s - y2) - (y_s^2 - y2^2)(y_s - y1) = 0
-    (y_s - y1) *x^2 - 2(y_s - y1)x2 *x + (y_s - y1)x2^2 - (y_s - y2) *x^2 + 2(y_s - y2)x1 *x - (y_s - y2)x1^2 + (y_s^2 - y1^2)(y_s - y2) - (y_s^2 - y2^2)(y_s - y1) = 0
-    (y2 - y1) *x^2 + 2( (y_s - y2)x1 - (y_s - y1)x2 ) *x + (y_s - y1)x2^2 - (y_s - y2)x1^2 + (y_s^2 - y1^2)(y_s - y2) - (y_s^2 - y2^2)(y_s - y1) = 0
-    (y2 - y1) *x^2 + 2( (y_s - y2)x1 - (y_s - y1)x2 ) *x + y_s*x2^2 - y1*x2^2 - y_s*x1^2 + y2*x1^2 + y_s^3 - y1^2*y_s - y_s^2*y2 + y1^2*y2 - y_s^3 + y2^2*y_s + y_s^2*y1 - y2^2*y1 = 0
-    (y2 - y1) *x^2 + 2( (y_s - y2)x1 - (y_s - y1)x2 ) *x + y_s(x2^2 - x1^2) - y1*x2^2 + y2*x1^2 + (y1 - y2) *y_s^2 + (y2^2 - y1^2) *y_s + y1^2*y2 - y2^2*y1 = 0
-    (y2 - y1) *x^2 + 2( (y_s - y2)x1 - (y_s - y1)x2 ) *x + (y1 - y2) *y_s^2 + (y2^2 - y1^2 + x2^2 - x1^2) *y_s + y2*x1^2 - y1*x2^2 + y1^2*y2 - y2^2*y1 = 0
-
-    D = (b/2) ^ 2 - ac = ( (y_s - y2)x1 - (y_s - y1)x2 )^2 - (y2 - y1) * ( (y1 - y2) *y_s^2 + (y2^2 - y1^2 + x2^2 - x1^2) *y_s + y2*x1^2 - y1*x2^2 + y1^2*y2 - y2^2*y1 )
-    x1, x2 = (-b/2 +- sqrt(D)) / a = ( -( (y_s - y2)x1 - (y_s - y1)x2 ) +- sqrt(D) ) / (y2 - y1)
-
-
-
-
-    2(x2 - x1)*x + 2(y2 - y1)*y + (x1^2 - x2^2) + (y1^2 - y2^2) = 0 //Ax + b = 0; D = A11 * A22 - A21 * A12; d2 = A11 * b2 - A21 * b1; x2 = -d2 / D
-    2(x3 - x1)*x + 2(y3 - y1)*y + (x1^2 - x3^2) + (y1^2 - y3^2) = 0
-
-    D = 2(x2 - x1) * 2(y3 - y1) - 2(x3 - x1) * 2(y2 - y1) = 4 * ((x2 - x1)(y3 - y1) - (x3 - x1)(y2 - y1))
-    d2 = 2(x2 - x1) * ((x1^2 - x3^2) + (y1^2 - y3^2)) - 2(x3 - x1) * ((x1^2 - x2^2) + (y1^2 - y2^2)) = 
-       = 2 * ( (x2 - x1)((x1^2 - x3^2) + (y1^2 - y3^2)) - (x3 - x1)((x1^2 - x2^2) + (y1^2 - y2^2)) )
-    y = - d2 / D
-*/
-
 
 function getRayDirection(vertex) {
     return {x: -(vertex.rParabolaSite.y - vertex.lParabolaSite.y), y: vertex.rParabolaSite.x - vertex.lParabolaSite.x};
@@ -115,7 +55,7 @@ function getXFromVertex(vertex, y_s) {
     const b_over_2 = ( (y_s - y2)*x1 - (y_s - y1)*x2 );
     const D = b_over_2**2 - a * ( (y1 - y2) *y_s**2 + (y2**2 - y1**2 + x2**2 - x1**2) *y_s
                         + y2*x1**2 - y1*x2**2 + y1**2*y2 - y2**2*y1 );
-    const vx1 = ( -b_over_2 -/*+*/ Math.sqrt(D) ) / a;
+    const vx1 = ( -b_over_2 - Math.sqrt(D) ) / a;
     return vx1;
 }
 
