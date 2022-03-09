@@ -88,25 +88,37 @@ function getCircleEventLineY(s1, s2, s3) {
     return vertexCoords.y + r;
 }
 
+
+function insertCircleEvent(queue, lVertex, rVertex) {
+    const circleEventCoords = getCircleEventVertexCoords(
+        lVertex.lParabolaSite, rVertex.lParabolaSite, rVertex.rParabolaSite);
+    if (circleEventCoords === null) {console.warn(`CircleEventY is null`, lVertex, rVertex); return;}
+    const circleEventLineY = getCircleEventLineY(
+        lVertex.lParabolaSite, rVertex.lParabolaSite, rVertex.rParabolaSite);
+    if (Math.abs(circleEventCoords.x - getXFromVertex(rVertex, circleEventLineY)) > EPS_TOLERANCE
+        || Math.abs(circleEventCoords.x - getXFromVertex(lVertex, circleEventLineY)) > EPS_TOLERANCE) {
+        return;
+    }
+    const insertionIdxUnchecked = queue.findIndex(event => event[0] > circleEventLineY);
+    const insertionIdx = insertionIdxUnchecked !== -1 ? insertionIdxUnchecked : queue.length;
+    queue.splice(insertionIdx, 0, [circleEventLineY, CIRCLE, rVertex]);
+}
+
+function removeCircleEvent(queue, lVertex, rVertex) {
+    const prevCircleEventY = getCircleEventLineY(
+        lVertex.lParabolaSite, rVertex.lParabolaSite, rVertex.rParabolaSite);
+
+    const prevCircleEventIdx = queue.findIndex(([y, eventType, vertex]) =>
+        y === prevCircleEventY && eventType === CIRCLE && vertex === rVertex);
+    if (prevCircleEventIdx !== -1) {
+        queue.splice(prevCircleEventIdx, 1);
+    }
+}
+
 function step(state) {
     let {queue, beachLine, diagram} = state;
     const [y, eventType, eventData] = queue.shift();
     scanLineY = y;
-
-    function insertCircleEvent(lVertex, rVertex) {
-        const circleEventCoords = getCircleEventVertexCoords(
-            lVertex.lParabolaSite, rVertex.lParabolaSite, rVertex.rParabolaSite);
-        if (circleEventCoords === null) {console.warn(`CircleEventY is null`, lVertex, rVertex); return;}
-        const circleEventLineY = getCircleEventLineY(
-            lVertex.lParabolaSite, rVertex.lParabolaSite, rVertex.rParabolaSite);
-        if (Math.abs(circleEventCoords.x - getXFromVertex(rVertex, circleEventLineY)) > EPS_TOLERANCE
-            || Math.abs(circleEventCoords.x - getXFromVertex(lVertex, circleEventLineY)) > EPS_TOLERANCE) {
-            return;
-        }
-        const insertionIdxUnchecked = queue.findIndex(event => event[0] > circleEventLineY);
-        const insertionIdx = insertionIdxUnchecked !== -1 ? insertionIdxUnchecked : queue.length;
-        queue.splice(insertionIdx, 0, [circleEventLineY, CIRCLE, rVertex]);
-    }
 
     switch (eventType) {
         case SITE: {
@@ -120,21 +132,14 @@ function step(state) {
             beachLine.splice(idx, 0, leftVertex, rightVertex);
             
             if (idx > 0 && idx + 2 < beachLine.length) {
-                const prevCircleEventY = getCircleEventLineY(beachLine[idx - 1].lParabolaSite,
-                    disectedParabolaSite, beachLine[idx + 2].rParabolaSite);
-
-                const prevCircleEventIdx = queue.findIndex(([y, eventType, vertex]) =>
-                    y === prevCircleEventY && eventType === CIRCLE && vertex === beachLine[idx + 2]);
-                if (prevCircleEventIdx !== -1) {
-                    queue.splice(prevCircleEventIdx, 1);
-                }
+                removeCircleEvent(queue, beachLine[idx - 1], beachLine[idx + 2]);
             }
 
             if (idx > 0) {
-                insertCircleEvent(beachLine[idx - 1], leftVertex);
+                insertCircleEvent(queue, beachLine[idx - 1], leftVertex);
             }
             if (idx + 2 < beachLine.length) {
-                insertCircleEvent(rightVertex, beachLine[idx + 2]);
+                insertCircleEvent(queue, rightVertex, beachLine[idx + 2]);
             }
             
             diagram.edges.push([leftVertex, rightVertex]);
@@ -152,26 +157,12 @@ function step(state) {
             beachLine.splice(idx, 0, newVertex);
 
             if (idx > 0) {
-                const prevLeftCircleEventY = getCircleEventLineY(beachLine[idx - 1].lParabolaSite,
-                    lVertex.lParabolaSite, lVertex.rParabolaSite);
-                const prevLeftCircleEventIdx = queue.findIndex(([y, eventType, vertex]) =>
-                    y === prevLeftCircleEventY && eventType === CIRCLE && vertex === lVertex);
-                if (prevLeftCircleEventIdx !== -1) {
-                    queue.splice(prevLeftCircleEventIdx, 1);
-                }
-
-                insertCircleEvent(beachLine[idx - 1], newVertex);
+                removeCircleEvent(queue, beachLine[idx - 1], lVertex);
+                insertCircleEvent(queue, beachLine[idx - 1], newVertex);
             }
             if (idx + 1 < beachLine.length) {
-                const prevRightCircleEventY = getCircleEventLineY(rVertex.lParabolaSite, rVertex.rParabolaSite,
-                    beachLine[idx + 1].rParabolaSite);
-                const prevRightCircleEventIdx = queue.findIndex(([y, eventType, vertex]) =>
-                    y === prevRightCircleEventY && eventType === CIRCLE && vertex === beachLine[idx + 1]);
-                if (prevRightCircleEventIdx !== -1) {
-                    queue.splice(prevRightCircleEventIdx, 1);
-                }
-
-                insertCircleEvent(newVertex, beachLine[idx + 1]);
+                removeCircleEvent(queue, rVertex, beachLine[idx + 1]);
+                insertCircleEvent(queue, newVertex, beachLine[idx + 1]);
             }
 
             diagram.vertices.push(circleEventCoords);
