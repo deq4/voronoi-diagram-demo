@@ -12,12 +12,55 @@
     <input type="number" id="y_off" step="50" value="10">
     <input type="number" id="scale" step="0.2" value="1" min="0.2">
 
+    <table>
+        <thead>
+            <tr>
+                <th colspan="3">Sites</th>
+            </tr>
+            <tr>
+                <th>x</th>
+                <th>y</th>
+            </tr>
+        </thead>
+        <tbody id="site-table-body">
+        </tbody>
+        <tfoot>
+            <tr>
+                <td><input id="site-add-x"></td>
+                <td><input id="site-add-y"></td>
+                <td><button id="site-add-button">+</button></td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <template id="site-template-row">
+        <tr>
+            <td></td>
+            <td></td>
+            <td><button>-</button></td>
+        </tr>
+    </template>
+
     <style>
         canvas {
             width: 95vmin;
             height: 95vmin;
             align-self: center;
             border: 1px solid;
+        }
+
+        td {
+            text-align: right;
+        }
+
+        td input {
+            width: 100px;
+            text-align: right;
+        }
+
+        td button {
+            width: 40px;
+            border: 1px solid black;
         }
     </style>
     <script>
@@ -56,6 +99,42 @@
             ctx.fill();
             ctx.restore();
         }
+
+        const addSiteButton = document.getElementById("site-add-button");
+        const addSiteX = document.getElementById("site-add-x");
+        const addSiteY = document.getElementById("site-add-y");
+        const rowTemlate = document.getElementById("site-template-row");
+        const sitesRows = document.getElementById("site-table-body");
+        const removeSiteListener = ev => {
+            const row = ev.target.parentElement.parentElement;
+            row.remove();
+
+            runAlgo();
+        };
+        const addSiteRow = (x, y) => {
+            const row = rowTemlate.content.firstElementChild.cloneNode(true);
+            row.children[0].innerText = x;
+            row.children[1].innerText = y;
+            row.children[2].firstElementChild.addEventListener("click", removeSiteListener);
+            sitesRows.appendChild(row);
+        };
+        addSiteButton.addEventListener("click", ev => {
+            addSiteRow(addSiteX.value, addSiteY.value);
+
+            runAlgo();
+        });
+
+        const readSites = () => {
+            let sites = [];
+            for (const siteRow of sitesRows.children) {
+                const x = parseFloat(siteRow.children[0].textContent);
+                const y = parseFloat(siteRow.children[1].textContent);
+                sites.push({x, y});
+            }
+            return sites;
+        };
+
+        let sites, diagram;
 
         const ALGO_SCALE = 50;
 
@@ -124,14 +203,22 @@
             requestAnimationFrame(drawLoop);
         };
 
-        //const sites = [{"x":5,"y":1.2}, {"x":9,"y":1}, {"x":3,"y":2}, {"x":7,"y":3}, {"x":4,"y":5}];
-        const sites = [{x: 5, y: 1}, {x: 10, y: 4}];
-        const state = init(sites);
-        while (state.queue.length > 0) {
-            step(state);
+        const runAlgo = () => {
+            sites = readSites();
+            const state = init(sites);
+            while (state.queue.length > 0) {
+                step(state);
+            }
+            diagram = state.diagram;
+        };
+        
+        const initialSites = [{"x":5,"y":1.2}, {"x":9,"y":1}, {"x":3,"y":2}, {"x":7,"y":3}, {"x":4,"y":5}, {"x":5, "y":3}];
+        //const initialSites = [{x: 5, y: 1}, {x: 10, y: 4}];
+        for (const site of initialSites) {
+            addSiteRow(site.x, site.y);
         }
-        const diagram = state.diagram;
 
+        runAlgo();
         drawLoop();
     </script>
 </body>
