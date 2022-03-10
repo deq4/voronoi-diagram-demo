@@ -94,8 +94,8 @@ function insertCircleEvent(queue, lVertex, rVertex) {
         || Math.abs(circleEventCoords.x - getXFromVertex(lVertex, circleEventLineY)) > EPS_TOLERANCE) {
         return;
     }
-    const insertionIdxUnchecked = queue.findIndex(event => event[0] > circleEventLineY);
-    const insertionIdx = insertionIdxUnchecked !== -1 ? insertionIdxUnchecked : queue.length;
+    let insertionIdx = queue.findIndex(event => event[0] > circleEventLineY);
+    insertionIdx = insertionIdx !== -1 ? insertionIdx : queue.length;
     queue.splice(insertionIdx, 0, [circleEventLineY, CIRCLE, rVertex]);
 }
 
@@ -116,8 +116,8 @@ function step(state) {
 
     switch (eventType) {
         case SITE: {
-            const idxUnchecked = beachLine.findIndex(vert => getXFromVertex(vert, y) - eventData.x >= 0);
-            const idx = idxUnchecked !== -1 ? idxUnchecked : beachLine.length;
+            let idx = beachLine.findIndex(vert => getXFromVertex(vert, y) - eventData.x >= 0);
+            idx = idx !== -1 ? idx : beachLine.length;
             
             const disectedParabolaSite = idx === beachLine.length ? idx === 0 ? null :
                 beachLine[idx - 1].rParabolaSite : beachLine[idx].lParabolaSite;
@@ -141,14 +141,13 @@ function step(state) {
             break;
         }
         case CIRCLE: {
-            const idxUnchecked = beachLine.indexOf(eventData); // with a real priority queue we would have to search by x-coordinate.
-            if (idxUnchecked === -1) throw Error(`Circle event not found in beach line ${JSON.stringify(eventData)}`);
-            const idx = idxUnchecked - 1;
+            let idx = beachLine.indexOf(eventData); // with a real priority queue we would have to search by x-coordinate.
+            if (idx === -1) throw Error(`Circle event not found in beach line ${JSON.stringify(eventData)}`);
+            idx = idx - 1;
             const [lVertex, rVertex] = [beachLine[idx], beachLine[idx + 1]];
-            beachLine.splice(idx, 2);
             const circleEventCoords = getCircleEventVertexCoords(lVertex.lParabolaSite, lVertex.rParabolaSite, rVertex.rParabolaSite);
             const newVertex = new Vertex(lVertex.lParabolaSite, rVertex.rParabolaSite, circleEventCoords);
-            beachLine.splice(idx, 0, newVertex);
+            beachLine.splice(idx, 2, newVertex);
 
             if (idx > 0) {
                 removeCircleEvent(queue, beachLine[idx - 1], lVertex);
