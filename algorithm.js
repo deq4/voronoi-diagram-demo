@@ -45,8 +45,6 @@ function calcParabolaY(parabolaSite, y_s, x) {
     return ((y_s**2 - parabolaSite.y**2) - (x - parabolaSite.x)**2) / (2 * (y_s - parabolaSite.y));
 }
 
-let scanLineY = 0;
-
 function getXFromVertex(vertex, y_s) {
     const [x1, y1, x2, y2] = [vertex.lParabolaSite.x, vertex.lParabolaSite.y,
         vertex.rParabolaSite.x, vertex.rParabolaSite.y];
@@ -60,12 +58,6 @@ function getXFromVertex(vertex, y_s) {
                         + y2*x1**2 - y1*x2**2 + y1**2*y2 - y2**2*y1 );
     const vx1 = ( -b_over_2 - Math.sqrt(D) ) / a;
     return vx1;
-}
-
-function vertexCompare(lhs, rhs) {
-    lhs = (typeof lhs === "number") ? lhs : getXFromVertex(lhs, scanLineY);
-    rhs = (typeof rhs === "number") ? rhs : getXFromVertex(rhs, scanLineY);
-    return lhs - rhs;
 }
 
 function getCircleEventVertexCoords(s1, s2, s3) {
@@ -121,11 +113,10 @@ function removeCircleEvent(queue, lVertex, rVertex) {
 function step(state) {
     let {queue, beachLine, diagram} = state;
     const [y, eventType, eventData] = queue.shift();
-    scanLineY = y;
 
     switch (eventType) {
         case SITE: {
-            const idxUnchecked = beachLine.findIndex(vert => vertexCompare(vert, eventData.x) >= 0);
+            const idxUnchecked = beachLine.findIndex(vert => getXFromVertex(vert, y) - eventData.x >= 0);
             const idx = idxUnchecked !== -1 ? idxUnchecked : beachLine.length;
             
             const disectedParabolaSite = idx === beachLine.length ? idx === 0 ? null :
