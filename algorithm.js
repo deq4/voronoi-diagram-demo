@@ -25,9 +25,7 @@ function init(sites) {
     if (sites.length < 2) {
         return {queue: [], beachLine: [], diagram: []};
     }
-    const queue = sites
-    .map((coord) => [coord.y, SITE, coord])
-        .sort((lhs, rhs) => lhs[0] - rhs[0]);
+    const queue = sites.map(coord => [coord.y, SITE, coord]).sort((lhs, rhs) => lhs[0] - rhs[0]);
     const s1 = queue[0][2];
     const s2 = queue[1][2];
     queue.splice(0, 2);
@@ -50,8 +48,7 @@ function getXFromVertex(vertex, y_s) {
         vertex.rParabolaSite.x, vertex.rParabolaSite.y];
     const a = (y2 - y1);
     if (a === 0) {
-        return -( (y1 - y2) *y_s**2 + (y2**2 - y1**2 + x2**2 - x1**2) *y_s + y2*x1**2 - y1*x2**2 + y1**2*y2 - y2**2*y1 )
-            / ( 2 * ( (y_s - y2)*x1 - (y_s - y1)*x2 ) );
+        return (x1 + x2) / 2;
     }
     const b_over_2 = ( (y_s - y2)*x1 - (y_s - y1)*x2 );
     const D = b_over_2**2 - a * ( (y1 - y2) *y_s**2 + (y2**2 - y1**2 + x2**2 - x1**2) *y_s
@@ -60,7 +57,7 @@ function getXFromVertex(vertex, y_s) {
     return vx1;
 }
 
-function getCircleEventVertexCoords(s1, s2, s3) {
+function getCircleEventParameters(s1, s2, s3) {
     const D = 4 * ((s2.x - s1.x) * (s3.y - s1.y) - (s3.x - s1.x) * (s2.y - s1.y));
     if (D === 0) {
         return null;
@@ -69,42 +66,36 @@ function getCircleEventVertexCoords(s1, s2, s3) {
                   - ((s1.x ** 2 - s3.x ** 2) + (s1.y ** 2 - s3.y ** 2)) * (s2.y - s1.y));
     const d2 = 2 * ((s2.x - s1.x) * ((s1.x ** 2 - s3.x ** 2) + (s1.y ** 2 - s3.y ** 2))
                   - (s3.x - s1.x) * ((s1.x ** 2 - s2.x ** 2) + (s1.y ** 2 - s2.y ** 2)));
-    const xc = -d1 / D;
-    const yc = -d2 / D;
-    return {x:xc, y:yc};
+    const x = -d1 / D;
+    const y = -d2 / D;
+    const r = Math.hypot(s1.x - x, s1.y - y);
+    const y_line = y + r;
+    return {x, y, r, y_line};
 }
-
-function getCircleEventLineY(s1, s2, s3) {
-    const vertexCoords = getCircleEventVertexCoords(s1, s2, s3);
-    if (vertexCoords === null) {
-        return null;
-    }
-    const r = Math.hypot(s1.x - vertexCoords.x, s1.y - vertexCoords.y);
-    return vertexCoords.y + r;
-}
-
 
 function insertCircleEvent(queue, lVertex, rVertex) {
-    const circleEventCoords = getCircleEventVertexCoords(
+    const circleEventParams = getCircleEventParameters(
         lVertex.lParabolaSite, rVertex.lParabolaSite, rVertex.rParabolaSite);
-    if (circleEventCoords === null) {console.warn(`CircleEventY is null`, lVertex, rVertex); return;}
-    const circleEventLineY = getCircleEventLineY(
-        lVertex.lParabolaSite, rVertex.lParabolaSite, rVertex.rParabolaSite);
-    if (Math.abs(circleEventCoords.x - getXFromVertex(rVertex, circleEventLineY)) > EPS_TOLERANCE
-        || Math.abs(circleEventCoords.x - getXFromVertex(lVertex, circleEventLineY)) > EPS_TOLERANCE) {
+    if (circleEventParams === null) {console.warn(`circleEventParams is null`, lVertex, rVertex); return;}
+    if (Math.abs(circleEventParams.x - getXFromVertex(rVertex, circleEventParams.y_line)) > EPS_TOLERANCE
+        || Math.abs(circleEventParams.x - getXFromVertex(lVertex, circleEventParams.y_line)) > EPS_TOLERANCE) {
         return;
     }
-    let insertionIdx = queue.findIndex(event => event[0] > circleEventLineY);
+    let insertionIdx = queue.findIndex(event => event[0] > circleEventParams.y_line);
     insertionIdx = insertionIdx !== -1 ? insertionIdx : queue.length;
-    queue.splice(insertionIdx, 0, [circleEventLineY, CIRCLE, rVertex]);
+    queue.splice(insertionIdx, 0, [circleEventParams.y_line, CIRCLE,
+        {vertex: rVertex, coords: {x: circleEventParams.x, y: circleEventParams.y}}]);
 }
 
 function removeCircleEvent(queue, lVertex, rVertex) {
-    const prevCircleEventY = getCircleEventLineY(
+    const circleEventParams = getCircleEventParameters(
         lVertex.lParabolaSite, rVertex.lParabolaSite, rVertex.rParabolaSite);
+    if (circleEventParams == null) {
+        return;
+    }
 
-    const prevCircleEventIdx = queue.findIndex(([y, eventType, vertex]) =>
-        y === prevCircleEventY && eventType === CIRCLE && vertex === rVertex);
+    const prevCircleEventIdx = queue.findIndex(([y, eventType, eventData]) =>
+        y === circleEventParams.y_line && eventType === CIRCLE && eventData.vertex === rVertex);
     if (prevCircleEventIdx !== -1) {
         queue.splice(prevCircleEventIdx, 1);
     }
@@ -141,11 +132,11 @@ function step(state) {
             break;
         }
         case CIRCLE: {
-            let idx = beachLine.indexOf(eventData); // with a real priority queue we would have to search by x-coordinate.
+            let idx = beachLine.indexOf(eventData.vertex); // with a real priority queue we would have to search by x-coordinate.
             if (idx === -1) throw Error(`Circle event not found in beach line ${JSON.stringify(eventData)}`);
             idx = idx - 1;
             const [lVertex, rVertex] = [beachLine[idx], beachLine[idx + 1]];
-            const circleEventCoords = getCircleEventVertexCoords(lVertex.lParabolaSite, lVertex.rParabolaSite, rVertex.rParabolaSite);
+            const circleEventCoords = eventData.coords;
             const newVertex = new Vertex(lVertex.lParabolaSite, rVertex.rParabolaSite, circleEventCoords);
             beachLine.splice(idx, 2, newVertex);
 
