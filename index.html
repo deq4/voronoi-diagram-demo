@@ -65,6 +65,7 @@
     </style>
     <script>
         function convertCoords(coords) {
+            if (coords.y === -Infinity) return {x: coords.x * ALGO_SCALE, y: -y_off.value / scale};
             return {x: coords.x * ALGO_SCALE, y: coords.y * ALGO_SCALE};
         }
 

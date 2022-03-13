@@ -8,9 +8,13 @@ class Vertex {
         this.lParabolaSite = lParabolaSite;
         this.rParabolaSite = rParabolaSite;
         if (!rayStart) {
-            const [lowerParabola, higherParabola] = lParabolaSite.y > rParabolaSite.y ?
-                [lParabolaSite, rParabolaSite] : [rParabolaSite, lParabolaSite];
-            rayStart = {x: lowerParabola.x, y: calcParabolaY(higherParabola, lowerParabola.y, lowerParabola.x)};
+            if (lParabolaSite.y === rParabolaSite.y) {
+                rayStart = {x: (lParabolaSite.x + rParabolaSite.x) / 2, y: -Infinity};
+            } else {
+                const [lowerParabola, higherParabola] = lParabolaSite.y > rParabolaSite.y ?
+                    [lParabolaSite, rParabolaSite] : [rParabolaSite, lParabolaSite];
+                rayStart = {x: lowerParabola.x, y: calcParabolaY(higherParabola, lowerParabola.y, lowerParabola.x)};
+            }
         }
         this.rayStart = rayStart;
     }
@@ -25,12 +29,26 @@ function init(sites) {
     if (sites.length < 2) {
         return {queue: [], beachLine: [], diagram: []};
     }
-    const queue = sites.map(coord => [coord.y, SITE, coord]).sort((lhs, rhs) => lhs[0] - rhs[0]);
-    const s1 = queue[0][2];
-    const s2 = queue[1][2];
-    queue.splice(0, 2);
-    const beachLine = [new Vertex(s1, s2), new Vertex(s2, s1)];
-    const diagram = {edges: [[beachLine[0], beachLine[1]]], vertices: []}
+    const queue = sites.map(coord => [coord.y, SITE, coord])
+        .sort((lhs, rhs) => lhs[0] !== rhs[0] ? lhs[0] - rhs[0] : lhs[2].x - rhs[2].x);
+
+    let beachLine = [];
+    let lastSite = queue[0][2];
+    for (let i = 1; i < queue.length; ++i) {
+        if (queue[i][2].y !== lastSite.y) {
+            if (i !== 1) {
+                queue.splice(0, i);
+            } else {
+                beachLine = [new Vertex(queue[0][2], queue[1][2]), new Vertex(queue[1][2], queue[0][2])];
+                queue.splice(0, 2);
+            }
+            break;
+        }
+        beachLine.push(new Vertex(lastSite, queue[i][2]));
+        lastSite = queue[i][2];
+    }
+    
+    const diagram = {edges: [[...beachLine]], vertices: []}
     const state = {queue, beachLine, diagram};
     return state;
 }
