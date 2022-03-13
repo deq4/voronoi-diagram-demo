@@ -27,7 +27,7 @@ class Vertex {
 
 function init(sites) {
     if (sites.length < 2) {
-        return {queue: [], beachLine: [], diagram: []};
+        return {queue: [], beachLine: [], diagram: {vertices: [], edges: []}};
     }
     const queue = sites.map(coord => [coord.y, SITE, coord])
         .sort((lhs, rhs) => lhs[0] !== rhs[0] ? lhs[0] - rhs[0] : lhs[2].x - rhs[2].x);
