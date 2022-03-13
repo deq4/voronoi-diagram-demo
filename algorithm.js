@@ -99,6 +99,11 @@ function insertCircleEvent(queue, lVertex, rVertex) {
         || Math.abs(circleEventParams.x - getXFromVertex(lVertex, circleEventParams.y_line)) > EPS_TOLERANCE) {
         return;
     }
+    const lDir = getRayDirection(lVertex);
+    const rDir = getRayDirection(rVertex);
+    if (lDir.x * rDir.y - lDir.y * rDir.x <= 0) {
+        return;
+    }
     let insertionIdx = queue.findIndex(event => event[0] > circleEventParams.y_line);
     insertionIdx = insertionIdx !== -1 ? insertionIdx : queue.length;
     queue.splice(insertionIdx, 0, [circleEventParams.y_line, CIRCLE,
