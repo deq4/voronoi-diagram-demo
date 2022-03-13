@@ -8,10 +8,6 @@
 </head>
 <body>
     <canvas width="1000" height="1000"></canvas>
-    <input type="number" id="x_off" step="50" value="10">
-    <input type="number" id="y_off" step="50" value="10">
-    <input type="number" id="scale" step="0.2" value="1" min="0.2">
-
     <table>
         <thead>
             <tr>
@@ -32,6 +28,20 @@
             </tr>
         </tfoot>
     </table>
+    <div id="canvas-controls">
+        <label>
+            X offset
+            <input type="number" id="x_off" step="50" value="10">
+        </label>
+        <label>
+            Y offset
+            <input type="number" id="y_off" step="50" value="10">
+        </label>
+        <label>
+            Scale
+            <input type="number" id="scale" step="0.2" value="1" min="0.2">
+        </label>
+    </div>
 
     <template id="site-template-row">
         <tr>
@@ -42,11 +52,32 @@
     </template>
 
     <style>
+        body {
+            display: flex;
+        }
+
+        div, table {
+            margin-left: 20px;
+        }
+
+        #canvas-controls {
+            display: flex;
+            flex-direction: column;
+        }
+
+        #canvas-controls label {
+            margin: 10px;
+        }
+
         canvas {
             width: 95vmin;
             height: 95vmin;
             align-self: center;
             border: 1px solid;
+        }
+
+        table {
+            display: block;
         }
 
         td {
@@ -135,7 +166,7 @@
             return sites;
         };
 
-        let sites, diagram;
+        let sites, diagram, state;
 
         const ALGO_SCALE = 50;
 
@@ -206,7 +237,7 @@
 
         const runAlgo = () => {
             sites = readSites();
-            const state = init(sites);
+            state = init(sites);
             while (state.queue.length > 0) {
                 step(state);
             }
