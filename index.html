@@ -113,6 +113,23 @@
             return {x, y};
         }
 
+        function getQuardraticSplineMidPointParam(lowPoint, p1, p2) {
+            const a = (p1.y - p2.y);
+            if (a === 0) {
+                return {x: 2 * lowPoint.x - (p1.x + p2.x) / 2, y: 2 * lowPoint.y - p1.y};
+            }
+            const D = (lowPoint.y - p1.y) * (lowPoint.y - p2.y);
+            let t;
+            if (p1.x <= lowPoint.x && lowPoint.x <= p2.x) {
+                t = (lowPoint.y - p2.y - Math.sqrt(D)) / a;
+            } else {
+                t = (lowPoint.y - p2.y + Math.sqrt(D)) / a;
+            }
+            const y = (lowPoint.y - t * p1.y) / (1-t);
+            const x = (lowPoint.x - t*t * p1.x - (1-t)*(1-t) * p2.x) / (2*t*(1-t));
+            return {x, y};
+        }
+
         function drawAxes(drawingParams) {
             ctx.arc(0, 0, 2 / drawingParams.scale, 0, 2 * Math.PI);
             ctx.fill();
@@ -131,6 +148,61 @@
             ctx.arc(x, y, size, 0, 2 * Math.PI);
             ctx.fill();
             ctx.restore();
+        }
+
+        function drawParabola(lowPoint, p1, p2) {
+            const cp = getQuardraticSplineMidPointParam(lowPoint, p1, p2);
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.quadraticCurveTo(cp.x, cp.y, p2.x, p2.y);
+            ctx.stroke();
+        }
+
+        function clamp(x, lo, hi) {
+            return Math.min(Math.max(x, lo), hi);
+        }
+
+        function drawParabolas(state, drawingParams, yScanLine) {
+            const beachLine = state.beachLine;
+
+            let minYSite;
+            if (beachLine.length === 0) {
+                minYSite = sites.reduce((p, c) => p.y <= c.y ? p : c, {y: Infinity});
+                if (minYSite.y === Infinity || yScanLine <= minYSite.y) {
+                    return;
+                }
+            }
+
+            for (let i = -1; i < beachLine.length; ++i) {
+                let lX, rX;
+                if (i !== -1) {
+                    lX = clamp(getXFromVertex(beachLine[i], yScanLine),
+                        drawingParams.border.left / ALGO_SCALE, drawingParams.border.right / ALGO_SCALE);
+                } else {
+                    lX = drawingParams.border.left / ALGO_SCALE;
+                }
+                if (i !== beachLine.length - 1) {
+                    rX = clamp(getXFromVertex(beachLine[i+1], yScanLine),
+                        drawingParams.border.left / ALGO_SCALE, drawingParams.border.right / ALGO_SCALE);
+                } else {
+                    rX = drawingParams.border.right / ALGO_SCALE;
+                }
+                if (lX >= rX) {
+                    continue;
+                }
+                const site = i !== -1 ? beachLine[i].rParabolaSite :
+                    beachLine.length !== 0 ? beachLine[i+1].lParabolaSite : minYSite;
+                if (lX === site.x) {
+                    lX -= 1e-6;
+                }
+                if (rX === site.x) {
+                    rX += 1e-6;
+                }
+                const lP = convertCoords({x: lX, y: calcParabolaY(site, yScanLine, lX)});
+                const rP = convertCoords({x: rX, y: calcParabolaY(site, yScanLine, rX)});
+                const lowP = convertCoords({x: site.x, y: (site.y + yScanLine) / 2});
+                drawParabola(lowP, lP, rP);
+            }
         }
 
         function drawDiagram(sites, state, drawingParams) {
@@ -166,6 +238,8 @@
                 }
             }
             ctx.restore();
+
+            drawParabolas(state, drawingParams, yScanLine);
         }
 
         const addSiteButton = document.getElementById("site-add-button");
@@ -203,6 +277,7 @@
         };
 
         let sites, diagram, state;
+        let yScanLine = -Infinity;
 
 
         const canvas = document.querySelector("canvas");
