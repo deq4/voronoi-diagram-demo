@@ -95,8 +95,9 @@
         }
     </style>
     <script>
+        const ALGO_SCALE = 50;
+
         function convertCoords(coords) {
-            if (coords.y === -Infinity) return {x: coords.x * ALGO_SCALE, y: -y_off.value / scale};
             return {x: coords.x * ALGO_SCALE, y: coords.y * ALGO_SCALE};
         }
 
@@ -112,23 +113,58 @@
             return {x, y};
         }
 
-        function drawAxes() {
-            ctx.arc(0, 0, 2 / scale, 0, 2 * Math.PI);
+        function drawAxes(drawingParams) {
+            ctx.arc(0, 0, 2 / drawingParams.scale, 0, 2 * Math.PI);
             ctx.fill();
             ctx.beginPath();
-            ctx.moveTo(-x_off.value / scale, 0);
-            ctx.lineTo((-x_off.value + width) / scale, 0);
-            ctx.moveTo(0, -y_off.value / scale);
-            ctx.lineTo(0, (-y_off.value + height) / scale);
+            ctx.moveTo(drawingParams.border.left, 0);
+            ctx.lineTo(drawingParams.border.right, 0);
+            ctx.moveTo(0, drawingParams.border.top);
+            ctx.lineTo(0, drawingParams.border.bottom);
             ctx.stroke();
         }
 
-        function drawCircle(x, y, style) {
+        function drawCircle(x, y, style, size) {
             ctx.save();
             ctx.fillStyle = style;
             ctx.beginPath();
-            ctx.arc(x, y, 5 / scale, 0, 2 * Math.PI);
+            ctx.arc(x, y, size, 0, 2 * Math.PI);
             ctx.fill();
+            ctx.restore();
+        }
+
+        function drawDiagram(sites, state, drawingParams) {
+            const diagram = state.diagram;
+            for (site of sites) {
+                const coords = convertCoords(site);
+                drawCircle(coords.x, coords.y, "black", 5 / drawingParams.scale);
+            }
+
+            for (vertex of diagram.vertices) {
+                const coords = convertCoords(vertex);
+                drawCircle(coords.x, coords.y, "blue", 5 / drawingParams.scale);
+            }
+
+            ctx.save();
+            ctx.strokeStyle = "green";
+            
+            for (const edge of diagram.edges) {
+                for (const ray of edge) {
+                    const startCoords = convertCoords(ray.rayStart);
+                    let endCoords;
+                    if (ray.segmentEnd) {
+                        endCoords = convertCoords(ray.segmentEnd);
+                    } else {
+                        const rayDirection = getRayDirection(ray);
+                        endCoords = getRayBorderIntersection(startCoords, rayDirection, drawingParams.border);
+                    }
+
+                    ctx.beginPath();
+                    ctx.moveTo(startCoords.x, startCoords.y === -Infinity ? drawingParams.border.top : startCoords.y);
+                    ctx.lineTo(endCoords.x, endCoords.y);
+                    ctx.stroke();
+                }
+            }
             ctx.restore();
         }
 
@@ -168,16 +204,11 @@
 
         let sites, diagram, state;
 
-        const ALGO_SCALE = 50;
 
         const canvas = document.querySelector("canvas");
         const ctx = canvas.getContext("2d");
 
         const [width, height] = [canvas.width, canvas.height];
-        ctx.font = '25px sans-serif';
-        const baseTransform = ctx.getTransform();
-
-        let scale;
 
         canvas.addEventListener("mousemove", (ev) => {
             if (!ev.buttons) {
@@ -188,49 +219,23 @@
         });
 
         const drawLoop = () => {
-            ctx.setTransform(baseTransform);
+            ctx.resetTransform();
             ctx.clearRect(0, 0, width, height);
             ctx.beginPath();
 
-            scale = parseFloat(window.scale.value);
-            ctx.translate(x_off.value, y_off.value);
+            const [x_off, y_off, scale] = [parseFloat(window.x_off.value), parseFloat(window.y_off.value),
+                parseFloat(window.scale.value)];
+            const border = {left: -x_off / scale, right: (-x_off + width) / scale,
+                top: -y_off / scale, bottom: (-y_off + height) / scale};
+            const drawingParams = {border, x_off, y_off, scale};
+
+            ctx.translate(x_off, y_off);
             ctx.scale(scale, scale);
             ctx.lineWidth = 1.5 / scale;
             
-            drawAxes();
+            drawAxes(drawingParams);
 
-            for (site of sites) {
-                const coords = convertCoords(site);
-                drawCircle(coords.x, coords.y, "black");
-            }
-
-            for (vertex of diagram.vertices) {
-                const coords = convertCoords(vertex);
-                drawCircle(coords.x, coords.y, "blue");
-            }
-
-            ctx.save();
-            ctx.strokeStyle = "green";
-            const border = {left: -x_off.value / scale, right: (-x_off.value + width) / scale,
-                            top: -y_off.value / scale, bottom: (-y_off.value + height) / scale};
-            for (const edge of diagram.edges) {
-                for (const ray of edge) {
-                    const startCoords = convertCoords(ray.rayStart);
-                    let endCoords;
-                    if (ray.segmentEnd) {
-                        endCoords = convertCoords(ray.segmentEnd);
-                    } else {
-                        const rayDirection = getRayDirection(ray);
-                        endCoords = getRayBorderIntersection(startCoords, rayDirection, border);
-                    }
-
-                    ctx.beginPath();
-                    ctx.moveTo(startCoords.x, startCoords.y);
-                    ctx.lineTo(endCoords.x, endCoords.y);
-                    ctx.stroke();
-                }
-            }
-            ctx.restore();
+            drawDiagram(sites, state, drawingParams);
            
             requestAnimationFrame(drawLoop);
         };
