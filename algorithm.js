@@ -33,22 +33,22 @@ function init(sites) {
         .sort((lhs, rhs) => lhs[0] !== rhs[0] ? lhs[0] - rhs[0] : lhs[2].x - rhs[2].x);
 
     let beachLine = [];
-    let lastSite = queue[0][2];
-    for (let i = 1; i < queue.length; ++i) {
-        if (queue[i][2].y !== lastSite.y) {
-            if (i !== 1) {
-                queue.splice(0, i);
-            } else {
-                beachLine = [new Vertex(queue[0][2], queue[1][2]), new Vertex(queue[1][2], queue[0][2])];
-                queue.splice(0, 2);
-            }
-            break;
-        }
-        beachLine.push(new Vertex(lastSite, queue[i][2]));
-        lastSite = queue[i][2];
+    let i;
+    for (i = 1; i < queue.length && queue[i][2].y === queue[i - 1][2].y; ++i) {
+        beachLine.push(new Vertex(queue[i - 1][2], queue[i][2]));
     }
     
-    const diagram = {edges: [[...beachLine]], vertices: []}
+    let edges;
+    if (i !== 1) {
+        queue.splice(0, i);
+        edges = beachLine.map(v => [v]);
+    } else {
+        beachLine = [new Vertex(queue[0][2], queue[1][2]), new Vertex(queue[1][2], queue[0][2])];
+        queue.splice(0, 2);
+        edges = [[...beachLine]];
+    }
+    
+    const diagram = {edges, vertices: []}
     const state = {queue, beachLine, diagram};
     return state;
 }
