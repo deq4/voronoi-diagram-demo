@@ -94,16 +94,16 @@ function getCircleEventParameters(s1, s2, s3) {
 function insertCircleEvent(queue, lVertex, rVertex) {
     const circleEventParams = getCircleEventParameters(
         lVertex.lParabolaSite, rVertex.lParabolaSite, rVertex.rParabolaSite);
-    if (circleEventParams === null) {console.warn(`circleEventParams is null`, lVertex, rVertex); return;}
-    if (Math.abs(circleEventParams.x - getXFromVertex(rVertex, circleEventParams.y_line)) > EPS_TOLERANCE
-        || Math.abs(circleEventParams.x - getXFromVertex(lVertex, circleEventParams.y_line)) > EPS_TOLERANCE) {
+    if (circleEventParams === null) {
         return;
     }
+
     const lDir = getRayDirection(lVertex);
     const rDir = getRayDirection(rVertex);
     if (lDir.x * rDir.y - lDir.y * rDir.x <= 0) {
         return;
     }
+
     let insertionIdx = queue.findIndex(event => event[0] > circleEventParams.y_line);
     insertionIdx = insertionIdx !== -1 ? insertionIdx : queue.length;
     queue.splice(insertionIdx, 0, [circleEventParams.y_line, CIRCLE,
