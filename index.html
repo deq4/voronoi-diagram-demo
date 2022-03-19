@@ -42,6 +42,10 @@
             <input type="number" id="scale" step="0.2" value="1" min="0.2">
         </label>
     </div>
+    <div>
+        <button id="step-button">Step</button>
+        <button id="animate-button">Animate</button>
+    </div>
 
     <template id="site-template-row">
         <tr>
@@ -60,12 +64,12 @@
             margin-left: 20px;
         }
 
-        #canvas-controls {
+        div {
             display: flex;
             flex-direction: column;
         }
 
-        #canvas-controls label {
+        div > * {
             margin: 10px;
         }
 
@@ -165,12 +169,9 @@
         function drawParabolas(state, drawingParams, yScanLine) {
             const beachLine = state.beachLine;
 
-            let minYSite;
-            if (beachLine.length === 0) {
-                minYSite = sites.reduce((p, c) => p.y <= c.y ? p : c, {y: Infinity});
-                if (minYSite.y === Infinity || yScanLine <= minYSite.y) {
-                    return;
-                }
+            const minYSite = state.firstSite;
+            if (beachLine.length === 0 && (minYSite === null || yScanLine <= minYSite.y)) {
+                return;
             }
 
             for (let i = -1; i < beachLine.length; ++i) {
@@ -278,7 +279,34 @@
 
         let sites, diagram, state;
         let yScanLine = -Infinity;
+        let animationRunning = false;
 
+        function drawingStep() {
+            animationRunning = false;
+            if (yScanLine == -Infinity) {
+                state = init(sites);
+            }
+
+            if (state.queue.length === 0) {
+                yScanLine = -Infinity;
+                return;
+            }
+
+            yScanLine = state.queue[0][0] + 1e-3;
+            while (state.queue.length > 0 && state.queue[0][0] < yScanLine) {
+                step(state);
+            }
+        }
+        document.getElementById("step-button").addEventListener("click", drawingStep);
+
+        function animate() {
+            if (state.queue.length === 0) {
+                state = init(sites);
+                yScanLine = state.queue[0][0] + 1e-3;
+            }
+            animationRunning = true;
+        }
+        document.getElementById("animate-button").addEventListener("click", animate);
 
         const canvas = document.querySelector("canvas");
         const ctx = canvas.getContext("2d");
@@ -293,7 +321,8 @@
             y_off.value = parseFloat(y_off.value) +/*-*/ ev.movementY / canvas.clientHeight * height;
         });
 
-        const drawLoop = () => {
+        let lastFrame = null;
+        const drawLoop = (ts) => {
             ctx.resetTransform();
             ctx.clearRect(0, 0, width, height);
             ctx.beginPath();
@@ -311,11 +340,34 @@
             drawAxes(drawingParams);
 
             drawDiagram(sites, state, drawingParams);
+
+            if (animationRunning === false) {
+                lastFrame = null;
+            } else {
+                if (state.queue.length === 0) {
+                    animationRunning = false;
+                } else if (lastFrame === null) {
+                    lastFrame = ts;
+                } else {
+                    const elapsed = ts - lastFrame;
+                    lastFrame = ts;
+    
+                    const dYScanLine = elapsed / 1000 * 1;
+                    yScanLine += dYScanLine;
+
+                    while (state.queue.length > 0 && state.queue[0][0] < yScanLine) {
+                        step(state);
+                    }
+                }
+            }
            
             requestAnimationFrame(drawLoop);
         };
 
         const runAlgo = () => {
+            yScanLine = -Infinity;
+            animationRunning = false;
+
             sites = readSites();
             state = init(sites);
             while (state.queue.length > 0) {
