@@ -26,30 +26,10 @@ class Vertex {
 }
 
 function init(sites) {
-    if (sites.length < 2) {
-        return {queue: [], beachLine: [], diagram: {vertices: [], edges: []}};
-    }
     const queue = sites.map(coord => [coord.y, SITE, coord])
         .sort((lhs, rhs) => lhs[0] !== rhs[0] ? lhs[0] - rhs[0] : lhs[2].x - rhs[2].x);
-
-    let beachLine = [];
-    let i;
-    for (i = 1; i < queue.length && queue[i][2].y === queue[i - 1][2].y; ++i) {
-        beachLine.push(new Vertex(queue[i - 1][2], queue[i][2]));
-    }
-    
-    let edges;
-    if (i !== 1) {
-        queue.splice(0, i);
-        edges = beachLine.map(v => [v]);
-    } else {
-        beachLine = [new Vertex(queue[0][2], queue[1][2]), new Vertex(queue[1][2], queue[0][2])];
-        queue.splice(0, 2);
-        edges = [[...beachLine]];
-    }
-    
-    const diagram = {edges, vertices: []}
-    const state = {queue, beachLine, diagram};
+    const state = {queue, beachLine: [], diagram: {edges: [], vertices: []},
+        firstSite: sites.length > 0 ? queue[0][2] : null};
     return state;
 }
 
@@ -125,16 +105,26 @@ function removeCircleEvent(queue, lVertex, rVertex) {
 }
 
 function step(state) {
-    let {queue, beachLine, diagram} = state;
+    let {queue, beachLine, diagram, firstSite} = state;
     const [y, eventType, eventData] = queue.shift();
 
     switch (eventType) {
         case SITE: {
             let idx = beachLine.findIndex(vert => getXFromVertex(vert, y) - eventData.x >= 0);
             idx = idx !== -1 ? idx : beachLine.length;
-            
-            const disectedParabolaSite = idx === beachLine.length ? idx === 0 ? null :
+
+            const disectedParabolaSite = idx === beachLine.length ? idx === 0 ? firstSite :
                 beachLine[idx - 1].rParabolaSite : beachLine[idx].lParabolaSite;
+            if (disectedParabolaSite === eventData) {
+                return;
+            }
+            if (disectedParabolaSite.y === eventData.y) {
+                const newVertex = new Vertex(disectedParabolaSite, eventData);
+                beachLine.splice(idx, 0, newVertex);
+                diagram.edges.push([newVertex]);
+                return;
+            }
+
             const leftVertex = new Vertex(disectedParabolaSite, eventData);
             const rightVertex = new Vertex(eventData, disectedParabolaSite);
             beachLine.splice(idx, 0, leftVertex, rightVertex);
