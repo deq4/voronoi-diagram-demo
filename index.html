@@ -243,6 +243,18 @@
             drawParabolas(state, drawingParams, yScanLine);
         }
 
+        function drawScanLine(drawingParams, scanLineY) {
+            ctx.save();
+            ctx.strokeStyle = "red";
+
+            ctx.beginPath();
+            ctx.moveTo(drawingParams.border.left, scanLineY * ALGO_SCALE);
+            ctx.lineTo(drawingParams.border.right, scanLineY * ALGO_SCALE);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
         const addSiteButton = document.getElementById("site-add-button");
         const addSiteX = document.getElementById("site-add-x");
         const addSiteY = document.getElementById("site-add-y");
@@ -340,6 +352,8 @@
             drawAxes(drawingParams);
 
             drawDiagram(sites, state, drawingParams);
+
+            drawScanLine(drawingParams, yScanLine);
 
             if (animationRunning === false) {
                 lastFrame = null;
