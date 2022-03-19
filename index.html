@@ -28,7 +28,7 @@
             </tr>
         </tfoot>
     </table>
-    <div id="canvas-controls">
+    <div>
         <label>
             X offset
             <input type="number" id="x_off" step="50" value="10">
@@ -100,6 +100,8 @@
     </style>
     <script>
         const ALGO_SCALE = 50;
+
+        const ANIMATION_SPEED = 1;
 
         function convertCoords(coords) {
             return {x: coords.x * ALGO_SCALE, y: coords.y * ALGO_SCALE};
@@ -293,6 +295,8 @@
         let yScanLine = -Infinity;
         let animationRunning = false;
 
+
+        const SCAN_LINE_OFFSET = 1e-3;
         function drawingStep() {
             animationRunning = false;
             if (yScanLine == -Infinity) {
@@ -304,7 +308,7 @@
                 return;
             }
 
-            yScanLine = state.queue[0][0] + 1e-3;
+            yScanLine = state.queue[0][0] + SCAN_LINE_OFFSET;
             while (state.queue.length > 0 && state.queue[0][0] < yScanLine) {
                 step(state);
             }
@@ -314,7 +318,7 @@
         function animate() {
             if (state.queue.length === 0) {
                 state = init(sites);
-                yScanLine = state.queue[0][0] + 1e-3;
+                yScanLine = state.queue[0][0] + SCAN_LINE_OFFSET;
             }
             animationRunning = true;
         }
@@ -366,7 +370,7 @@
                     const elapsed = ts - lastFrame;
                     lastFrame = ts;
     
-                    const dYScanLine = elapsed / 1000 * 1;
+                    const dYScanLine = elapsed / 1000 * ANIMATION_SPEED;
                     yScanLine += dYScanLine;
 
                     while (state.queue.length > 0 && state.queue[0][0] < yScanLine) {
