@@ -48,6 +48,7 @@ function getXFromVertex(vertex, y_s) {
     if (a === 0) {
         return (x1 + x2) / 2;
     }
+
     const b_over_2 = ( (y_s - y2)*x1 - (y_s - y1)*x2 );
     const D = b_over_2**2 - a * ( (y1 - y2) *y_s**2 + (y2**2 - y1**2 + x2**2 - x1**2) *y_s
                         + y2*x1**2 - y1*x2**2 + y1**2*y2 - y2**2*y1 );
@@ -60,6 +61,7 @@ function getCircleEventParameters(s1, s2, s3) {
     if (D === 0) {
         return null;
     }
+
     const d1 = 2 * (((s1.x ** 2 - s2.x ** 2) + (s1.y ** 2 - s2.y ** 2)) * (s3.y - s1.y)
                   - ((s1.x ** 2 - s3.x ** 2) + (s1.y ** 2 - s3.y ** 2)) * (s2.y - s1.y));
     const d2 = 2 * ((s2.x - s1.x) * ((s1.x ** 2 - s3.x ** 2) + (s1.y ** 2 - s3.y ** 2))
@@ -128,7 +130,7 @@ function step(state) {
             const leftVertex = new Vertex(disectedParabolaSite, eventData);
             const rightVertex = new Vertex(eventData, disectedParabolaSite);
             beachLine.splice(idx, 0, leftVertex, rightVertex);
-            
+
             if (idx > 0 && idx + 2 < beachLine.length) {
                 removeCircleEvent(queue, beachLine[idx - 1], beachLine[idx + 2]);
             }
@@ -139,9 +141,9 @@ function step(state) {
             if (idx + 2 < beachLine.length) {
                 insertCircleEvent(queue, rightVertex, beachLine[idx + 2]);
             }
-            
+
             diagram.edges.push([leftVertex, rightVertex]);
-            
+
             break;
         }
         case CIRCLE: {
@@ -169,4 +171,3 @@ function step(state) {
         }
     }
 }
-
