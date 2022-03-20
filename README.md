@@ -1,3 +1,5 @@
+# [Demo](https://deq4.github.io/voronoi-diagram-demo/)
+
 A crude interactive demo of the [Fortune's algorithm](https://en.wikipedia.org/wiki/Fortune's_algorithm)
 for calculating a [Voronoi diagram](https://en.wikipedia.org/wiki/Voronoi_diagram).
 
